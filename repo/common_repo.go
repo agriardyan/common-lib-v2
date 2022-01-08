@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"go.mongodb.org/mongo-driver/mongo"
 
@@ -21,6 +22,7 @@ type IDBOperation interface {
 	InsertMany(data []interface{}) (*mongo.InsertManyResult, error)
 	FindOne(filter, impl interface{}) (interface{}, error)
 	FindOneAndUpdate(filter, update interface{}) (*mongo.UpdateResult, error)
+	FindOneAndUpsert(filter, update interface{}) (*mongo.UpdateResult, error)
 	Find(filter, impl interface{}) (interface{}, error)
 	FindPagedSorted(pagingSortingReq PagingSortingRequest, filter, impl interface{}) (interface{}, *mongopagination.PaginationData, error)
 	Count(filter interface{}) (int64, error)
@@ -29,6 +31,7 @@ type IDBOperation interface {
 	InsertManyAtColl(collection string, data []interface{}) (*mongo.InsertManyResult, error)
 	FindOneAtColl(collection string, filter, impl interface{}) (interface{}, error)
 	FindOneAndUpdateAtColl(collection string, filter, update interface{}) (*mongo.UpdateResult, error)
+	FindOneAndUpsertAtColl(collection string, filter, update interface{}) (*mongo.UpdateResult, error)
 	FindAtColl(collection string, filter, impl interface{}) (interface{}, error)
 	FindAtCollPagedSorted(collection string, pagingSortingReq PagingSortingRequest, filter, impl interface{}) (interface{}, *mongopagination.PaginationData, error)
 	CountAtColl(collection string, filter interface{}) (int64, error)
@@ -75,6 +78,10 @@ func (dbOp *DBOperation) FindOne(filter, impl interface{}) (interface{}, error) 
 
 func (dbOp *DBOperation) FindOneAndUpdate(filter, update interface{}) (*mongo.UpdateResult, error) {
 	return dbOp.FindOneAndUpdateAtColl(dbOp.defaultCollection, filter, update)
+}
+
+func (dbOp *DBOperation) FindOneAndUpsert(filter, update interface{}) (*mongo.UpdateResult, error) {
+	return dbOp.FindOneAndUpsertAtColl(dbOp.defaultCollection, filter, update)
 }
 
 func (dbOp *DBOperation) Find(filter, impl interface{}) (interface{}, error) {
@@ -139,6 +146,23 @@ func (dbOp *DBOperation) FindOneAndUpdateAtColl(collection string, filter, updat
 
 	coll := dbOp.dbClient.Database(dbOp.databaseName).Collection(collection)
 	res, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return res, err
+	}
+
+	return res, nil
+}
+
+func (dbOp *DBOperation) FindOneAndUpsertAtColl(collection string, filter, update interface{}) (*mongo.UpdateResult, error) {
+	ctx, cf := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cf()
+
+	opts := options.Update().SetUpsert(true)
+	coll := dbOp.dbClient.Database(dbOp.databaseName).Collection(collection)
+	res, err := coll.UpdateOne(ctx, filter, update, opts)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil

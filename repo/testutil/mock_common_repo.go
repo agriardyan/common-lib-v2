@@ -28,6 +28,10 @@ func (dbOp *MockDBOperation) FindOneAndUpdate(filter, update interface{}) (*mong
 	return dbOp.FindOneAndUpdateAtColl(dbOp.defaultCollection, filter, update)
 }
 
+func (dbOp *MockDBOperation) FindOneAndUpsert(filter, update interface{}) (*mongo.UpdateResult, error) {
+	return dbOp.FindOneAndUpdateAtColl(dbOp.defaultCollection, filter, update)
+}
+
 func (dbOp *MockDBOperation) Find(filter, impl interface{}) (interface{}, error) {
 	return dbOp.FindAtColl(dbOp.defaultCollection, filter, impl)
 }
@@ -66,6 +70,14 @@ func (dbOp *MockDBOperation) FindOneAtColl(collection string, filter, impl inter
 }
 
 func (dbOp *MockDBOperation) FindOneAndUpdateAtColl(collection string, filter, update interface{}) (*mongo.UpdateResult, error) {
+	args := dbOp.Called(collection, filter, update)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*mongo.UpdateResult), args.Error(1)
+}
+
+func (dbOp *MockDBOperation) FindOneAndUpsertAtColl(collection string, filter, update interface{}) (*mongo.UpdateResult, error) {
 	args := dbOp.Called(collection, filter, update)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
