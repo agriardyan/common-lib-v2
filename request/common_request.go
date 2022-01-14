@@ -54,3 +54,10 @@ type PagingSortingRequest struct {
 	Sort  string
 	Page  int64
 }
+
+type DecodedPagingSortingRequest struct {
+	Limit      int64
+	Sort       string
+	IsSortDesc bool
+	Page       int64
+}
