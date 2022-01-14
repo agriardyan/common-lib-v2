@@ -1,6 +1,7 @@
 package commonreq
 
 import (
+	"regexp"
 	"strconv"
 
 	"github.com/emicklei/go-restful"
@@ -13,9 +14,12 @@ const (
 	QueryParamSort      = "sort"
 	QueryParamPage      = "page"
 	DefaultLimitPerPage = 30
-	DefaultSortOnPage   = 0
 	DefaultPage         = 0
 )
+
+// allow only alphanumeric, hypen, underscore
+// https://stackoverflow.com/a/26368676
+var regexSortAllowedChars, _ = regexp.Compile("^[A-Za-z0-9]([A-Za-z0-9_-]*[A-Za-z0-9])?$")
 
 //ExtractPagingSortingRequest extract limit and sort query param and convert to int
 func ExtractPagingSortingRequest(req *restful.Request) PagingSortingRequest {
@@ -28,9 +32,10 @@ func ExtractPagingSortingRequest(req *restful.Request) PagingSortingRequest {
 	if err != nil {
 		limit = DefaultLimitPerPage
 	}
-	sort, err := strconv.Atoi(sortRaw)
-	if err != nil {
-		sort = DefaultSortOnPage
+	isSortParamClean := regexSortAllowedChars.MatchString(sortRaw)
+	sort := sortRaw
+	if !isSortParamClean {
+		sort = ""
 	}
 	page, err := strconv.ParseInt(pageRaw, 10, 64)
 	if err != nil {
@@ -46,6 +51,6 @@ func ExtractPagingSortingRequest(req *restful.Request) PagingSortingRequest {
 //PagingSortingRequest dto for paging-sorting request
 type PagingSortingRequest struct {
 	Limit int64
-	Sort  int
+	Sort  string
 	Page  int64
 }
